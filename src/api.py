@@ -6,7 +6,8 @@ from sqlalchemy.orm import Session
 from parser_service import ParserBackgroundService
 from database import Base, engine, get_db
 from request_models import CategoryCreate, ProductCreate, CategoryUpdate, ProductUpdate
-from models import Category, Product
+from models import Category, Product, ProductCategory
+from src.response_models import ProductWithCategory
 
 
 @asynccontextmanager
@@ -68,12 +69,24 @@ async def create_product(product: ProductCreate, db: Session = Depends(get_db)):
     return db_product
 
 
+@app.get("/products/")
+async def get_products(offset: int = 0, limit: int = 10, db: Session = Depends(get_db)):
+    db_category = db.query(Product).offset(offset).limit(limit)
+    if db_category is None:
+        raise HTTPException(status_code=404, detail="Product not found")
+    return list(db_category)
+
+
 @app.get("/products/{product_id}")
 async def read_product(product_id: str, db: Session = Depends(get_db)):
     db_product = db.query(Product).filter(Product.id == product_id).first()
     if db_product is None:
         raise HTTPException(status_code=404, detail="Product not found")
-    return db_product
+    db_product_category = db.query(ProductCategory).filter(ProductCategory.product_id == product_id).first()
+    db_category = db.query(Category).filter(Category.id == db_product_category.category_id).first()
+
+    return ProductWithCategory(id=db_product.id, name=db_product.name, price=db_product.price, category_id=db_category.id,
+                               category_name=db_category.name)
 
 
 @app.put("/products/{product_id}")
