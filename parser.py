@@ -1,7 +1,7 @@
 import requests
 from sqlalchemy.orm import Session
 
-from api import get_db
+from database import get_db
 from models import Product, Category
 
 # url api с категориями
@@ -17,6 +17,7 @@ def fetch_categories():
 # рекурсивный проход по всем категориям
 def select_category(categories):
     for category in categories:
+        print(category['name'])
 
         if 'subcategories' in category and category['subcategories']:
             merge_entities([Category(id=x['id'], name=x['name'], parent_id=category['id']) for x in

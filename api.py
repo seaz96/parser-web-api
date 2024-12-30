@@ -3,32 +3,25 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException, Depends
 from sqlalchemy.orm import Session
 
-import parser
-from database import Base, engine, DbSession
+from parser_service import ParserBackgroundService
+from database import Base, engine, get_db
 from request_models import CategoryCreate, ProductCreate, CategoryUpdate, ProductUpdate
 from models import Category, Product
 
 
 @asynccontextmanager
-async def lifespan(app: FastAPI):
-    asyncio.create_task(parse_site())
+async def lifespan():
+    asyncio.create_task(parser_service.parse_site())
     yield
 
 
+parser_service = ParserBackgroundService()
 app = FastAPI(lifespan=lifespan)
 Base.metadata.create_all(bind=engine)
 
 
-def get_db():
-    db = DbSession()
-    try:
-        yield db
-    finally:
-        db.close()
-
-
 @app.post("/categories/")
-def create_category(category: CategoryCreate, db: Session = Depends(get_db)):
+async def create_category(category: CategoryCreate, db: Session = Depends(get_db)):
     db_category = Category(**category.dict())
     db.add(db_category)
     db.commit()
@@ -37,7 +30,7 @@ def create_category(category: CategoryCreate, db: Session = Depends(get_db)):
 
 
 @app.get("/categories/{category_id}")
-def read_category(category_id: str, db: Session = Depends(get_db)):
+async def read_category(category_id: str, db: Session = Depends(get_db)):
     db_category = db.query(Category).filter(Category.id == category_id).first()
     if db_category is None:
         raise HTTPException(status_code=404, detail="Category not found")
@@ -45,7 +38,7 @@ def read_category(category_id: str, db: Session = Depends(get_db)):
 
 
 @app.put("/categories/{category_id}")
-def update_category(category_id: str, category: CategoryUpdate, db: Session = Depends(get_db)):
+async def update_category(category_id: str, category: CategoryUpdate, db: Session = Depends(get_db)):
     db_category = db.query(Category).filter(Category.id == category_id).first()
     if db_category is None:
         raise HTTPException(status_code=404, detail="Category not found")
@@ -57,7 +50,7 @@ def update_category(category_id: str, category: CategoryUpdate, db: Session = De
 
 
 @app.delete("/categories/{category_id}")
-def delete_category(category_id: str, db: Session = Depends(get_db)):
+async def delete_category(category_id: str, db: Session = Depends(get_db)):
     db_category = db.query(Category).filter(Category.id == category_id).first()
     if db_category is None:
         raise HTTPException(status_code=404, detail="Category not found")
@@ -67,7 +60,7 @@ def delete_category(category_id: str, db: Session = Depends(get_db)):
 
 
 @app.post("/products/")
-def create_product(product: ProductCreate, db: Session = Depends(get_db)):
+async def create_product(product: ProductCreate, db: Session = Depends(get_db)):
     db_product = Product(**product.dict())
     db.add(db_product)
     db.commit()
@@ -76,7 +69,7 @@ def create_product(product: ProductCreate, db: Session = Depends(get_db)):
 
 
 @app.get("/products/{product_id}")
-def read_product(product_id: str, db: Session = Depends(get_db)):
+async def read_product(product_id: str, db: Session = Depends(get_db)):
     db_product = db.query(Product).filter(Product.id == product_id).first()
     if db_product is None:
         raise HTTPException(status_code=404, detail="Product not found")
@@ -84,7 +77,7 @@ def read_product(product_id: str, db: Session = Depends(get_db)):
 
 
 @app.put("/products/{product_id}")
-def update_product(product_id: str, product: ProductUpdate, db: Session = Depends(get_db)):
+async def update_product(product_id: str, product: ProductUpdate, db: Session = Depends(get_db)):
     db_product = db.query(Product).filter(Product.id == product_id).first()
     if db_product is None:
         raise HTTPException(status_code=404, detail="Product not found")
@@ -96,22 +89,13 @@ def update_product(product_id: str, product: ProductUpdate, db: Session = Depend
 
 
 @app.delete("/products/{product_id}")
-def delete_product(product_id: str, db: Session = Depends(get_db)):
+async def delete_product(product_id: str, db: Session = Depends(get_db)):
     db_product = db.query(Product).filter(Product.id == product_id).first()
     if db_product is None:
         raise HTTPException(status_code=404, detail="Product not found")
     db.delete(db_product)
     db.commit()
     return {"ok": True}
-
-
-# парсим раз в час автоматически
-async def parse_site():
-    while True:
-        print('Started parse task.')
-        parser.run()
-        print('Parsing stopped.')
-        await asyncio.sleep(3600)
 
 
 if __name__ == "__main__":
