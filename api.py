@@ -4,8 +4,8 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException, Depends
 from sqlalchemy.orm import Session
 from database import Base, engine, DbSession
-from models import CategoryCreate, ProductCreate, ProductCategoryCreate
-from models import Category, Product, ProductCategory
+from request_models import CategoryCreate, ProductCreate, CategoryUpdate, ProductUpdate
+from models import Category, Product
 
 
 @asynccontextmanager
@@ -44,7 +44,7 @@ def read_category(category_id: str, db: Session = Depends(get_db)):
 
 
 @app.put("/categories/{category_id}")
-def update_category(category_id: str, category: CategoryCreate, db: Session = Depends(get_db)):
+def update_category(category_id: str, category: CategoryUpdate, db: Session = Depends(get_db)):
     db_category = db.query(Category).filter(Category.id == category_id).first()
     if db_category is None:
         raise HTTPException(status_code=404, detail="Category not found")
@@ -83,7 +83,7 @@ def read_product(product_code: str, db: Session = Depends(get_db)):
 
 
 @app.put("/products/{product_code}")
-def update_product(product_code: str, product: ProductCreate, db: Session = Depends(get_db)):
+def update_product(product_code: str, product: ProductUpdate, db: Session = Depends(get_db)):
     db_product = db.query(Product).filter(Product.code == product_code).first()
     if db_product is None:
         raise HTTPException(status_code=404, detail="Product not found")
@@ -104,45 +104,6 @@ def delete_product(product_code: str, db: Session = Depends(get_db)):
     return {"ok": True}
 
 
-@app.post("/products_categories/")
-def create_product_category(product_category: ProductCategoryCreate, db: Session = Depends(get_db)):
-    db_product_category = ProductCategory(**product_category.dict())
-    db.add(db_product_category)
-    db.commit()
-    db.refresh(db_product_category)
-    return db_product_category
-
-
-@app.get("/products_categories/{product_code}")
-def read_product_category(product_code: str, db: Session = Depends(get_db)):
-    db_product_category = db.query(ProductCategory).filter(ProductCategory.product_code == product_code).first()
-    if db_product_category is None:
-        raise HTTPException(status_code=404, detail="Product category not found")
-    return db_product_category
-
-
-@app.put("/products_categories/{product_code}")
-def update_product_category(product_code: str, product_category: ProductCategoryCreate, db: Session = Depends(get_db)):
-    db_product_category = db.query(ProductCategory).filter(ProductCategory.product_code == product_code).first()
-    if db_product_category is None:
-        raise HTTPException(status_code=404, detail="Product category not found")
-    for key, value in product_category.dict().items():
-        setattr(db_product_category, key, value)
-    db.commit()
-    db.refresh(db_product_category)
-    return db_product_category
-
-
-@app.delete("/products_categories/{product_code}")
-def delete_product_category(product_code: str, db: Session = Depends(get_db)):
-    db_product_category = db.query(ProductCategory).filter(ProductCategory.product_code == product_code).first()
-    if db_product_category is None:
-        raise HTTPException(status_code=404, detail="Product category not found")
-    db.delete(db_product_category)
-    db.commit()
-    return {"ok": True}
-
-
 async def parse_site():
     while True:
         print("parsed!")
@@ -151,5 +112,4 @@ async def parse_site():
 
 if __name__ == "__main__":
     import uvicorn
-
     uvicorn.run("api:app", host="127.0.0.1", port=1235)

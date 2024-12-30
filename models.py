@@ -1,23 +1,5 @@
-from pydantic import BaseModel
 from sqlalchemy import Column, String, Float, ForeignKey
 from database import Base
-
-class CategoryCreate(BaseModel):
-    id: str
-    name: str
-    parent_id: str = None
-
-
-class ProductCreate(BaseModel):
-    code: str
-    name: str
-    price: float
-
-
-class ProductCategoryCreate(BaseModel):
-    product_code: str
-    category_id: str
-
 
 class Category(Base):
     __tablename__ = "categories"
