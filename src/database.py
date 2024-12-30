@@ -7,10 +7,10 @@ engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
 DbSession = sessionmaker(bind=engine)
 Base = declarative_base()
 
+
 def get_db():
     db = DbSession()
     try:
         yield db
     finally:
         db.close()
-

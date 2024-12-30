@@ -10,7 +10,7 @@ from models import Category, Product
 
 
 @asynccontextmanager
-async def lifespan():
+async def lifespan(app: FastAPI):
     asyncio.create_task(parser_service.parse_site())
     yield
 

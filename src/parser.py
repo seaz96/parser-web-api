@@ -2,7 +2,7 @@ import requests
 from sqlalchemy.orm import Session
 
 from database import get_db
-from models import Product, Category
+from models import Product, Category, ProductCategory
 
 # url api с категориями
 categories_url = "https://api-ecomm.sdvor.com/occ/v2/sd/catalogs/sdvrProductCatalog/Online/"
@@ -17,15 +17,18 @@ def fetch_categories():
 # рекурсивный проход по всем категориям
 def select_category(categories):
     for category in categories:
-        print(category['name'])
+        print(f'Parsed category: {category['name']}')
 
         if 'subcategories' in category and category['subcategories']:
             merge_entities([Category(id=x['id'], name=x['name'], parent_id=category['id']) for x in
                             category['subcategories']])
             select_category(category['subcategories'])
         else:
+            product_to_merge = fetch_products(category['id'])
             merge_entities([Product(id=x['code'], name=x['name'], price=x['price']['value']) for x in
-                            fetch_products(category['id'])])
+                            product_to_merge])
+            merge_entities([ProductCategory(product_id=x['code'], category_id=category['id']) for x in
+                            product_to_merge])
             return
 
 
