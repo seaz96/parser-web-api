@@ -24,6 +24,8 @@ Base.metadata.create_all(bind=engine)
 
 @app.post("/categories/")
 async def create_category(category: CategoryCreate, db: Session = Depends(get_db)):
+    if db.query(Category).filter(Category.id == category.id).first() is None:
+        raise HTTPException(status_code=403, detail="Category exists")
     db_category = Category(**category.dict())
     db.add(db_category)
     db.commit()
