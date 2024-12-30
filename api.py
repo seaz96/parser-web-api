@@ -1,6 +1,5 @@
 import asyncio
 from contextlib import asynccontextmanager
-
 from fastapi import FastAPI, HTTPException, Depends
 from sqlalchemy.orm import Session
 from database import Base, engine, DbSession
@@ -74,17 +73,17 @@ def create_product(product: ProductCreate, db: Session = Depends(get_db)):
     return db_product
 
 
-@app.get("/products/{product_code}")
-def read_product(product_code: str, db: Session = Depends(get_db)):
-    db_product = db.query(Product).filter(Product.code == product_code).first()
+@app.get("/products/{product_id}")
+def read_product(product_id: str, db: Session = Depends(get_db)):
+    db_product = db.query(Product).filter(Product.id == product_id).first()
     if db_product is None:
         raise HTTPException(status_code=404, detail="Product not found")
     return db_product
 
 
-@app.put("/products/{product_code}")
-def update_product(product_code: str, product: ProductUpdate, db: Session = Depends(get_db)):
-    db_product = db.query(Product).filter(Product.code == product_code).first()
+@app.put("/products/{product_id}")
+def update_product(product_id: str, product: ProductUpdate, db: Session = Depends(get_db)):
+    db_product = db.query(Product).filter(Product.id == product_id).first()
     if db_product is None:
         raise HTTPException(status_code=404, detail="Product not found")
     for key, value in product.dict().items():
@@ -94,9 +93,9 @@ def update_product(product_code: str, product: ProductUpdate, db: Session = Depe
     return db_product
 
 
-@app.delete("/products/{product_code}")
-def delete_product(product_code: str, db: Session = Depends(get_db)):
-    db_product = db.query(Product).filter(Product.code == product_code).first()
+@app.delete("/products/{product_id}")
+def delete_product(product_id: str, db: Session = Depends(get_db)):
+    db_product = db.query(Product).filter(Product.id == product_id).first()
     if db_product is None:
         raise HTTPException(status_code=404, detail="Product not found")
     db.delete(db_product)

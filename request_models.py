@@ -8,7 +8,7 @@ class CategoryCreate(BaseModel):
 
 
 class ProductCreate(BaseModel):
-    code: str
+    id: str
     name: str
     price: float
 

@@ -1,7 +1,8 @@
-# выполнил Азанов Никита Александрович РИ-320913
-
 import requests
-import json
+from sqlalchemy.orm import Session
+
+from api import get_db
+from models import Product
 
 # url api с категориями
 categories_url = "https://api-ecomm.sdvor.com/occ/v2/sd/catalogs/sdvrProductCatalog/Online/"
@@ -13,53 +14,41 @@ def fetch_categories():
     return response.json().get('categories', [])
 
 
-# отобразить категории
-def display_categories(categories, level=0):
-    for i, category in enumerate(categories):
-        print("  " * level + f"{i + 1}. {category['name']} ({category['id']})")
-
-        if 'subcategories' in category and category['subcategories']:
-            display_categories(category['subcategories'], level + 1)
-
-
 # метод выбора категорий и подкатегорий
-def select_category(categories, first_choice=True):
-    if first_choice:
-        selected_category = categories[1]
+def select_category(categories, dict_categories, products):
+    while True:
+        for i, category in enumerate(categories):
+            print(f"{i + 1}. {category['name']}")
 
-        if 'subcategories' in selected_category and selected_category['subcategories']:
-            return select_category(selected_category['subcategories'], False)
-        else:
-            return selected_category
-    else:
-        while True:
-            for i, category in enumerate(categories):
-                print(f"{i + 1}. {category['name']}")
+        choice = input("Выберите категорию, или введите 'выход', чтобы закончить: ")
 
-            choice = input("Выберите категорию, или введите 'выход', чтобы закончить: ")
+        if choice.lower() == 'выход':
+            return None
 
-            if choice.lower() == 'выход':
-                return None
+        try:
+            index = int(choice) - 1
 
-            try:
-                index = int(choice) - 1
+            if 0 <= index < len(categories):
+                selected_category = categories[index]
 
-                if 0 <= index < len(categories):
-                    selected_category = categories[index]
-
-                    if 'subcategories' in selected_category and selected_category['subcategories']:
-                        print(f"Выбрана категория: {selected_category['name']}")
-                        print()
-
-                        return select_category(selected_category['subcategories'], False)
-                    else:
-                        return selected_category
-                else:
-                    print("Выбрана некорректная категория.")
+                if 'subcategories' in selected_category and selected_category['subcategories']:
+                    print(f"Выбрана категория: {selected_category['name']}")
                     print()
-            except ValueError:
-                print("Ввод некорректен. Введите число, или напишите 'выход'.")
+
+                    return select_category(selected_category['subcategories'], dict_categories, products)
+                else:
+                    db: Session = next(get_db())
+                    db.add_all([Product(id=x['code'], name=x['name'], price=x['price']['value']) for x in
+                                fetch_products(selected_category['id'])])
+                    db.commit()
+                    db.close()
+                    return
+            else:
+                print("Выбрана некорректная категория.")
                 print()
+        except ValueError:
+            print("Ввод некорректен. Введите число, или напишите 'выход'.")
+            print()
 
 
 # получение продуктов категории
@@ -99,12 +88,13 @@ def process_products(products):
 
 # основной метод
 def main():
-    categories = fetch_categories()
+    dict_categories = {}
+    products = []
 
-    if categories:
-        process_categories(categories)
-    else:
-        print("Программа окончена.")
+    categories = fetch_categories()
+    catalog_node = list(filter(lambda x: x['id'] == 'catalog', categories))[0]
+    select_category(catalog_node['subcategories'], dict_categories, products)
+    pass
 
 
 # точка входа в приложение
