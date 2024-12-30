@@ -1,0 +1,6 @@
+asyncio
+fastapi[standard]
+uvicorn[standard]
+requests
+sqlalchemy
+pydantic
