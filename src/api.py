@@ -29,9 +29,21 @@ async def create_category(category: CategoryCreate, db: Session = Depends(get_db
     db.commit()
     db.refresh(db_category)
     await ws_manager.broadcast({
-        "action": f"add new category {category.id}"
+        "message": f"Created category {db_category.id}"
     })
     return db_category
+
+
+
+@app.get("/categories/")
+async def get_categories(offset: int = 0, limit: int = 10, db: Session = Depends(get_db)):
+    db_category = db.query(Category).offset(offset).limit(limit)
+    if db_category is None:
+        raise HTTPException(status_code=404, detail="Product not found")
+    await ws_manager.broadcast({
+        "message": f"Get categories: offset {offset}, limit {limit}"
+    })
+    return list(db_category)
 
 
 @app.get("/categories/{category_id}")
@@ -40,7 +52,7 @@ async def read_category(category_id: str, db: Session = Depends(get_db)):
     if db_category is None:
         raise HTTPException(status_code=404, detail="Category not found")
     await ws_manager.broadcast({
-        "action": f"get category {db_category.id}"
+        "message": f"Get category by id {db_category.id}"
     })
     return db_category
 
@@ -55,7 +67,7 @@ async def update_category(category_id: str, category: CategoryUpdate, db: Sessio
     db.commit()
     db.refresh(db_category)
     await ws_manager.broadcast({
-        "action": f"update category {db_category.id}"
+        "message": f"Updated category {db_category.id}"
     })
     return db_category
 
@@ -68,7 +80,7 @@ async def delete_category(category_id: str, db: Session = Depends(get_db)):
     db.delete(db_category)
     db.commit()
     await ws_manager.broadcast({
-        "action": f"delete category {db_category.id}"
+        "message": f"Delete category {db_category.id}"
     })
     return {"ok": True}
 
@@ -80,7 +92,7 @@ async def create_product(product: ProductCreate, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(db_product)
     await ws_manager.broadcast({
-        "action": f"created product {product.id}"
+        "message": f"Created product {product.id}"
     })
     return db_product
 
@@ -91,7 +103,7 @@ async def get_products(offset: int = 0, limit: int = 10, db: Session = Depends(g
     if db_category is None:
         raise HTTPException(status_code=404, detail="Product not found")
     await ws_manager.broadcast({
-        "action": f"get products: offset {offset}, limit {limit}"
+        "message": f"Get products: offset {offset}, limit {limit}"
     })
     return list(db_category)
 
@@ -105,7 +117,7 @@ async def read_product(product_id: str, db: Session = Depends(get_db)):
     db_category = db.query(Category).filter(Category.id == db_product_category.category_id).first()
 
     await ws_manager.broadcast({
-        "action": f"get product {product_id}"
+        "message": f"Get product by id {product_id}"
     })
 
     return ProductWithCategory(id=db_product.id, name=db_product.name, price=db_product.price,
@@ -123,7 +135,7 @@ async def update_product(product_id: str, product: ProductUpdate, db: Session = 
     db.commit()
     db.refresh(db_product)
     await ws_manager.broadcast({
-        "action": f"updated product {product_id}"
+        "message": f"Updated product {product_id}"
     })
     return db_product
 
@@ -137,7 +149,7 @@ async def delete_product(product_id: str, db: Session = Depends(get_db)):
     db.commit()
 
     await ws_manager.broadcast({
-        "action": f"deleted product {product_id}"
+        "message": f"Deleted product {product_id}"
     })
     return {"ok": True}
 

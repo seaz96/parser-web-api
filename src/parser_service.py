@@ -10,7 +10,7 @@ class ParserBackgroundService:
         while True:
             print('Starting parse task.')
             await ws_manager.broadcast({
-                "action": "parsing started"
+                "message": "Started parsing"
             })
             loop = asyncio.get_running_loop()
             loop.run_in_executor(None, lambda: parser.run())
