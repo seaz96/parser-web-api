@@ -2,7 +2,7 @@ import requests
 from sqlalchemy.orm import Session
 
 from api import get_db
-from models import Product
+from models import Product, Category
 
 # url api с категориями
 categories_url = "https://api-ecomm.sdvor.com/occ/v2/sd/catalogs/sdvrProductCatalog/Online/"
@@ -14,41 +14,20 @@ def fetch_categories():
     return response.json().get('categories', [])
 
 
-# метод выбора категорий и подкатегорий
-def select_category(categories, dict_categories, products):
-    while True:
-        for i, category in enumerate(categories):
-            print(f"{i + 1}. {category['name']}")
+# рекурсивный проход по всем категориям
+def select_category(categories):
+    for i, category in enumerate(categories):
+        print(category['name'])
+        category = categories[i]
 
-        choice = input("Выберите категорию, или введите 'выход', чтобы закончить: ")
-
-        if choice.lower() == 'выход':
-            return None
-
-        try:
-            index = int(choice) - 1
-
-            if 0 <= index < len(categories):
-                selected_category = categories[index]
-
-                if 'subcategories' in selected_category and selected_category['subcategories']:
-                    print(f"Выбрана категория: {selected_category['name']}")
-                    print()
-
-                    return select_category(selected_category['subcategories'], dict_categories, products)
-                else:
-                    db: Session = next(get_db())
-                    db.add_all([Product(id=x['code'], name=x['name'], price=x['price']['value']) for x in
-                                fetch_products(selected_category['id'])])
-                    db.commit()
-                    db.close()
-                    return
-            else:
-                print("Выбрана некорректная категория.")
-                print()
-        except ValueError:
-            print("Ввод некорректен. Введите число, или напишите 'выход'.")
-            print()
+        if 'subcategories' in category and category['subcategories']:
+            merge_entities([Category(id=x['id'], name=x['name'], parent_id=category['id']) for x in
+                                   category['subcategories']])
+            select_category(category['subcategories'])
+        else:
+            merge_entities([Product(id=x['code'], name=x['name'], price=x['price']['value']) for x in
+                            fetch_products(category['id'])])
+            return
 
 
 # получение продуктов категории
@@ -59,42 +38,22 @@ def fetch_products(category_id):
     return response.json().get('products', [])
 
 
-# обработка категорий
-def process_categories(categories):
-    print("Категории:")
-    selected_category = select_category(categories)
-
-    if selected_category:
-        print(f"Выбрана категория: {selected_category['name']}")
-        products = fetch_products(selected_category['id'])
-
-        if products:
-            process_products(products)
-        else:
-            print("Программа окончена.")
-    else:
-        print("Программа окончена.")
-
-
-# обработка продуктов
-def process_products(products):
-    print()
-    print("Продукты:")
-
-    for product in products:
-        price = product.get('price', {}).get('value', 'цена не указана')
-        print(f"- {product['name']} ({price} рублей)")
-
-
 # основной метод
 def main():
-    dict_categories = {}
-    products = []
-
     categories = fetch_categories()
     catalog_node = list(filter(lambda x: x['id'] == 'catalog', categories))[0]
-    select_category(catalog_node['subcategories'], dict_categories, products)
-    pass
+    merge_entities([Category(id=x['id'], name=x['name'], parent_id=catalog_node['id']) for x in
+                    catalog_node['subcategories']])
+
+    select_category(catalog_node['subcategories'])
+
+
+def merge_entities(to_merge):
+    db: Session = next(get_db())
+    for x in to_merge:
+        db.merge(x)
+    db.commit()
+    db.close()
 
 
 # точка входа в приложение
