@@ -17,7 +17,7 @@ def fetch_categories():
 # рекурсивный проход по всем категориям
 def select_category(categories):
     for category in categories:
-        print(f'Parsed category: {category['name']}')
+        print(f'Parsed category: {category["name"]}')
 
         if 'subcategories' in category and category['subcategories']:
             merge_entities([Category(id=x['id'], name=x['name'], parent_id=category['id']) for x in

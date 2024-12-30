@@ -6,8 +6,8 @@ from parser_service import ParserBackgroundService
 from database import Base, engine, get_db
 from request_models import CategoryCreate, ProductCreate, CategoryUpdate, ProductUpdate
 from models import Category, Product, ProductCategory
-from src.response_models import ProductWithCategory
-from src.websockets import WebsocketsManager
+from response_models import ProductWithCategory
+from websockets_manager import WebsocketsManager
 
 
 @asynccontextmanager
@@ -28,9 +28,9 @@ async def create_category(category: CategoryCreate, db: Session = Depends(get_db
     db.add(db_category)
     db.commit()
     db.refresh(db_category)
-    asyncio.run(ws_manager.broadcast({
+    await ws_manager.broadcast({
         "action": f"add new category {category.id}"
-    }))
+    })
     return db_category
 
 
@@ -39,9 +39,9 @@ async def read_category(category_id: str, db: Session = Depends(get_db)):
     db_category = db.query(Category).filter(Category.id == category_id).first()
     if db_category is None:
         raise HTTPException(status_code=404, detail="Category not found")
-    asyncio.run(ws_manager.broadcast({
+    await ws_manager.broadcast({
         "action": f"get category {db_category.id}"
-    }))
+    })
     return db_category
 
 
@@ -54,9 +54,9 @@ async def update_category(category_id: str, category: CategoryUpdate, db: Sessio
         setattr(db_category, key, value)
     db.commit()
     db.refresh(db_category)
-    asyncio.run(ws_manager.broadcast({
+    await ws_manager.broadcast({
         "action": f"update category {db_category.id}"
-    }))
+    })
     return db_category
 
 
@@ -67,9 +67,9 @@ async def delete_category(category_id: str, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Category not found")
     db.delete(db_category)
     db.commit()
-    asyncio.run(ws_manager.broadcast({
+    await ws_manager.broadcast({
         "action": f"delete category {db_category.id}"
-    }))
+    })
     return {"ok": True}
 
 
@@ -79,9 +79,9 @@ async def create_product(product: ProductCreate, db: Session = Depends(get_db)):
     db.add(db_product)
     db.commit()
     db.refresh(db_product)
-    asyncio.run(ws_manager.broadcast({
+    await ws_manager.broadcast({
         "action": f"created product {product.id}"
-    }))
+    })
     return db_product
 
 
@@ -90,9 +90,9 @@ async def get_products(offset: int = 0, limit: int = 10, db: Session = Depends(g
     db_category = db.query(Product).offset(offset).limit(limit)
     if db_category is None:
         raise HTTPException(status_code=404, detail="Product not found")
-    asyncio.run(ws_manager.broadcast({
+    await ws_manager.broadcast({
         "action": f"get products: offset {offset}, limit {limit}"
-    }))
+    })
     return list(db_category)
 
 
@@ -104,11 +104,12 @@ async def read_product(product_id: str, db: Session = Depends(get_db)):
     db_product_category = db.query(ProductCategory).filter(ProductCategory.product_id == product_id).first()
     db_category = db.query(Category).filter(Category.id == db_product_category.category_id).first()
 
-    asyncio.run(ws_manager.broadcast({
+    await ws_manager.broadcast({
         "action": f"get product {product_id}"
-    }))
+    })
 
-    return ProductWithCategory(id=db_product.id, name=db_product.name, price=db_product.price, category_id=db_category.id,
+    return ProductWithCategory(id=db_product.id, name=db_product.name, price=db_product.price,
+                               category_id=db_category.id,
                                category_name=db_category.name)
 
 
@@ -121,9 +122,9 @@ async def update_product(product_id: str, product: ProductUpdate, db: Session = 
         setattr(db_product, key, value)
     db.commit()
     db.refresh(db_product)
-    asyncio.run(ws_manager.broadcast({
+    await ws_manager.broadcast({
         "action": f"updated product {product_id}"
-    }))
+    })
     return db_product
 
 
@@ -135,10 +136,11 @@ async def delete_product(product_id: str, db: Session = Depends(get_db)):
     db.delete(db_product)
     db.commit()
 
-    asyncio.run(ws_manager.broadcast({
+    await ws_manager.broadcast({
         "action": f"deleted product {product_id}"
-    }))
+    })
     return {"ok": True}
+
 
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
@@ -156,4 +158,5 @@ async def websocket_endpoint(websocket: WebSocket):
 
 if __name__ == "__main__":
     import uvicorn
+
     uvicorn.run("api:app", host="127.0.0.1", port=1235)

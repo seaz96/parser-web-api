@@ -4,3 +4,4 @@ uvicorn[standard]
 requests
 sqlalchemy
 pydantic
+websockets
