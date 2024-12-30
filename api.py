@@ -2,6 +2,8 @@ import asyncio
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException, Depends
 from sqlalchemy.orm import Session
+
+import parser
 from database import Base, engine, DbSession
 from request_models import CategoryCreate, ProductCreate, CategoryUpdate, ProductUpdate
 from models import Category, Product
@@ -103,12 +105,16 @@ def delete_product(product_id: str, db: Session = Depends(get_db)):
     return {"ok": True}
 
 
+# парсим раз в час автоматически
 async def parse_site():
     while True:
-        print("parsed!")
-        await asyncio.sleep(5)
+        print('Started parse task.')
+        parser.run()
+        print('Parsing stopped.')
+        await asyncio.sleep(3600)
 
 
 if __name__ == "__main__":
     import uvicorn
+
     uvicorn.run("api:app", host="127.0.0.1", port=1235)
